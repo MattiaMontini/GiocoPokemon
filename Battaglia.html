@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .bottom-left {
+            position: absolute;
+            bottom: 10%;
+            left: 10%;
+            margin: 10px;
+            transition: transform 0.3s;
+            transform: scale(1.5);
+        }
+
+        .bottom-right {
+            position: absolute;
+            bottom: 10%;
+            right: 10%;
+            margin: 10px;
+            transform: scale(4);
+            transform-origin: bottom right;
+            transition: transform 0.3s;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+        }
+
+        .button-container button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 2px solid #333;
+            color: #333;
+            border-radius: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        /* Animazione della Pokéball */
+        @keyframes pulsate {
+            0% {
+                transform: scale(5);
+            }
+
+            50% {
+                transform: scale(5.5);
+            }
+
+            100% {
+                transform: scale(5);
+            }
+        }
+
+        .pulsating {
+            animation: pulsate 1s infinite;
+        }
+    </style>
+</head>
+
+<body>
+    <img src="immagini/spalle.png" alt="Immagine in basso a sinistra" class="bottom-left" id="scoby-image">
+    <img id="pokemon-image" class="bottom-right">
+
+    <div class="button-container">
+        <button id="button1">Scappa</button>
+        <button id="button2">Cattura</button>
+    </div>
+
+    <script>
+        // Variabili globali per memorizzare le coordinate del centro dell'immagine del Pokémon
+        let pokemonCenterX = null;
+        let pokemonCenterY = null;
+        let catturato = false;
+
+        // Probabilità di successo per la cattura (1 a 100) e numero di tentativi
+        const probabilità = 20;
+        let tentativi = 5;
+
+        // Recupera il tema dal localStorage (acqua o terra) o usa il valore di default
+        const temaSelezionato = localStorage.getItem("currentTheme") || "terra";
+
+        // Funzione per salvare il numero del Pokémon catturato nel localStorage
+        function salvaNumero(numero) {
+            // Verifica se il numero fornito è valido
+            if (isNaN(numero) || numero === null || numero === undefined) {
+                console.error("Il valore fornito non è un numero valido.");
+                return;
+            }
+
+            // Recupera l'array esistente di Pokémon catturati dal localStorage
+            let listaCatturati = JSON.parse(localStorage.getItem("ListaCatturati"));
+
+            // Se non esiste ancora l'array, inizializzalo come vuoto
+            if (!Array.isArray(listaCatturati)) {
+                listaCatturati = [];
+            }
+
+            // Verifica se il numero del Pokémon è già presente nell'array
+            if (listaCatturati.includes(numero)) {
+                console.log("Questo Pokémon è già stato catturato.");
+                return;  // Esce senza fare nulla se il Pokémon è già stato catturato
+            }
+
+            // Aggiungi il numero del Pokémon all'array
+            listaCatturati.push(numero);
+
+            // Salva l'array aggiornato nel localStorage
+            localStorage.setItem("ListaCatturati", JSON.stringify(listaCatturati));
+
+            console.log("Numero salvato con successo!");
+        }
+
+        // Funzione per cambiare lo sfondo in base al tema selezionato (acqua o terra)
+        function aggiornaSfondo(tema) {
+            const body = document.body;
+            if (tema === "acqua") {
+                body.style.backgroundImage = "url('immagini/sfondoacqua.png')";  // Sfondo per il tema acqua
+            } else {
+                body.style.backgroundImage = "url('immagini/scontro.png')";  // Sfondo per il tema terra
+            }
+        }
+
+        // Imposta lo sfondo in base al tema selezionato all'avvio della pagina
+        aggiornaSfondo(temaSelezionato);
+
+        // Funzione per ottenere i Pokémon filtrati in base al tema selezionato
+        async function getFilteredPokemon() {
+            const allPokemonIds = Array.from({ length: 1025 }, (_, i) => i + 1);  // Array con tutti gli ID Pokémon (1-1025)
+            if (temaSelezionato === "acqua") {
+                // Se il tema è acqua, ottieni solo i Pokémon di tipo acqua
+                const waterPokemon = await fetch("https://pokeapi.co/api/v2/type/water")
+                    .then((response) => response.json())  // Ottieni i dati dalla PokeAPI
+                    .then((data) => data.pokemon.map((p) => parseInt(p.pokemon.url.split("/").filter(Boolean).pop())));  // Estrai gli ID dei Pokémon di tipo acqua
+                return waterPokemon;  // Ritorna solo i Pokémon d'acqua
+            } else {
+                // Se il tema non è acqua, escludi i Pokémon di tipo acqua
+                const waterPokemon = await fetch("https://pokeapi.co/api/v2/type/water")
+                    .then((response) => response.json())  // Ottieni i dati della PokeAPI
+                    .then((data) => data.pokemon.map((p) => parseInt(p.pokemon.url.split("/").filter(Boolean).pop())));  // Estrai gli ID dei Pokémon di tipo acqua
+                return allPokemonIds.filter((id) => !waterPokemon.includes(id));  // Ritorna solo i Pokémon che non sono di tipo acqua
+            }
+        }
+
+        let randomPokemonId;
+
+        // Funzione per selezionare un Pokémon casuale e visualizzarlo
+        async function fetchAndDisplayPokemon() {
+            const availablePokemon = await getFilteredPokemon();  // Ottieni i Pokémon disponibili in base al tema
+            randomPokemonId = availablePokemon[Math.floor(Math.random() * availablePokemon.length)];  // Seleziona un Pokémon casuale
+
+            fetch(`https://pokeapi.co/api/v2/pokemon/${randomPokemonId}`)
+                .then((response) => response.json())  // Recupera i dettagli del Pokémon
+                .then((data) => {
+                    const animatedSpriteUrl = data.sprites.versions["generation-v"]["black-white"].animated.front_default;  // URL dell'immagine animata, se disponibile
+                    const staticSpriteUrl = data.sprites.front_default;  // URL dell'immagine statica
+
+                    // Usa l'immagine animata se disponibile, altrimenti usa quella statica
+                    const pokemonImageUrl = animatedSpriteUrl || staticSpriteUrl;
+                    const pokemonImage = document.getElementById("pokemon-image");
+                    pokemonImage.src = pokemonImageUrl;  // Imposta l'immagine del Pokémon
+                    pokemonImage.alt = data.name;  // Imposta il nome del Pokémon come alt
+
+                    // Funzione per calcolare e loggare il centro dell'immagine del Pokémon
+                    function logPokemonCenter() {
+                        const rect = pokemonImage.getBoundingClientRect();  // Ottieni la posizione e le dimensioni dell'immagine
+                        pokemonCenterX = rect.left + rect.width / 2;  // Calcola la coordinata X del centro
+                        pokemonCenterY = rect.top + rect.height / 2;  // Calcola la coordinata Y del centro
+                        console.log(`Centro del Pokémon: X = ${pokemonCenterX}, Y = ${pokemonCenterY}`);
+                    }
+
+                    // Logga e mostra il centro dopo che l'immagine è caricata
+                    pokemonImage.onload = logPokemonCenter;
+                })
+                .catch((error) => console.error("Errore nella fetch del Pokémon:", error));  // Gestione errori nel caso di problemi di rete
+        }
+
+        // Chiamata per ottenere e mostrare il Pokémon all'avvio della pagina
+        fetchAndDisplayPokemon();
+
+        // Gestione del pulsante "Scappa"
+        document.getElementById("button1").addEventListener("click", function () {
+            document.getElementById("scoby-image").src = "immagini/scappa.png";  // Cambia l'immagine di Scooby in "scappa.png"
+            document.getElementById("button2").disabled = true;  // Disabilita il pulsante "Cattura"
+            document.getElementById("button1").disabled = true;  // Disabilita il pulsante "Scappa"
+            setTimeout(function () {
+                window.location.href = "GiocaPokemon.html";  // Reindirizza alla pagina "GiocaPokemon.html" dopo 3 secondi
+            }, 3000);
+        });
+
+        // Gestione del pulsante "Cattura"
+        document.getElementById("button2").addEventListener("click", function () {
+            if (pokemonCenterX !== null && pokemonCenterY !== null) {  // Verifica che le coordinate del centro del Pokémon siano state calcolate
+                const pokemonImage = document.getElementById("pokemon-image");
+                const tempSrc = pokemonImage.src;  // Memorizza l'immagine originale del Pokémon
+
+                const pokemonHeight = pokemonImage.clientHeight;  // Ottieni l'altezza dell'immagine del Pokémon
+                const pokeballSize = pokemonHeight / 4;  // Imposta la dimensione della Pokéball come un quarto dell'altezza del Pokémon
+
+                pokemonImage.src = "immagini/Pokeball.jpg";  // Cambia l'immagine del Pokémon in quella della Pokéball
+                pokemonImage.style.height = `${pokeballSize}px`;  // Imposta la dimensione della Pokéball
+                pokemonImage.style.width = `${pokeballSize}px`;  // Imposta la larghezza della Pokéball
+
+                pokemonImage.style.position = "absolute";  // Posiziona la Pokéball in modo assoluto
+                pokemonImage.style.left = `${pokemonCenterX - pokeballSize / 2}px`;  // Posiziona la Pokéball rispetto al centro del Pokémon
+                pokemonImage.style.top = `${pokemonCenterY + 50 - pokeballSize / 2}px`;  // Posiziona la Pokéball verticalmente
+
+                pokemonImage.classList.add("pulsating");  // Aggiungi l'effetto di pulsazione alla Pokéball
+
+                const random = Math.floor(Math.random() * 100) + 1;  // Genera un numero casuale per determinare il successo della cattura
+                console.log(random);
+                let btn2 = document.getElementById("button2");
+                let btn1 = document.getElementById("button1");
+                btn2.disabled = true;  // Disabilita il pulsante "Cattura"
+
+                // Se il numero casuale è minore della probabilità di cattura, il tentativo fallisce
+                if (random < 100 - probabilità) {
+                    tentativi--;  // Riduci il numero di tentativi
+                    setTimeout(() => {
+                        btn2.disabled = false;  // Riabilita il pulsante "Cattura"
+                        pokemonImage.src = tempSrc;  // Ripristina l'immagine originale del Pokémon
+                        pokemonImage.style.height = "";  // Ripristina le dimensioni originali
+                        pokemonImage.style.width = "";
+                        pokemonImage.style.position = "";  // Ripristina la posizione
+                        pokemonImage.style.left = "";
+                        pokemonImage.style.top = "";
+                        pokemonImage.classList.remove("pulsating");  // Rimuovi l'effetto di pulsazione
+
+                        // Se i tentativi sono finiti, mostra l'immagine di Scooby che piange
+                        if (tentativi == 0) {
+                            document.getElementById("scoby-image").src = "immagini/scooby_piange.png";
+                            btn1.disabled = true;  // Disabilita entrambi i pulsanti
+                            btn2.disabled = true;
+                            setTimeout(function () {
+                                window.location.href = "GiocaPokemon.html";  // Reindirizza alla pagina "GiocaPokemon.html"
+                            }, 3000);
+                        }
+                    }, 2000);
+                } else {
+                    setTimeout(() => {
+                        pokemonImage.classList.remove("pulsating");  // Rimuovi l'effetto di pulsazione
+                        salvaNumero(randomPokemonId);  // Salva il Pokémon catturato
+                        document.getElementById("scoby-image").src = "immagini/catturato.png";  // Mostra l'immagine di cattura
+                        btn1.disabled = true;  // Disabilita i pulsanti
+                        btn2.disabled = true;
+                        document.getElementById("scoby-image").style.left = "-5%";  // Sposta l'immagine di Scooby
+                        setTimeout(function () {
+                            window.location.href = "GiocaPokemon.html";  // Reindirizza alla pagina "GiocaPokemon.html"
+                        }, 3000);
+                    }, 2000);
+                }
+            } else {
+                console.log("Le coordinate del Pokémon non sono ancora state calcolate.");  // Messaggio di errore se le coordinate non sono calcolate
+            }
+        });
+
+    </script>
+</body>
+
+</html>

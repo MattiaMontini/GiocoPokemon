@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Punti di Domanda e Movimento</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            background-image: url('immagini/erba_alta test.png');
+            background-size: cover;
+        }
+
+        .theme-switch {
+            position: absolute;
+            /* Assicurati che sia posizionato sopra */
+            bottom: 16px;
+            /* Posizione in basso */
+            right: 16px;
+            /* Posizione a destra */
+            z-index: 10;
+            /* Imposta un livello superiore al canvas */
+            background-color: rgba(255, 255, 255, 0.8);
+            /* Sfondo leggermente opaco per visibilità */
+            padding: 8px;
+            /* Margine interno */
+            border-radius: 8px;
+            /* Angoli arrotondati */
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+            /* Leggera ombreggiatura */
+        }
+    </style>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@1.14.1/dist/full.css" rel="stylesheet">
+</head>
+
+<body>
+    <button id="backButton"
+        class="btn btn-circle btn-outline text-white bg-blue-500 hover:bg-blue-700 absolute top-4 left-4"
+        onclick="window.location.href='index.html'">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-6 h-6">
+            <!-- Icona della casetta -->
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 12l9-9 9 9M4 10v10h16V10M12 22V12" />
+        </svg>
+    </button>
+
+
+    <canvas id="domandaCanvas"></canvas>
+
+    <div class="theme-switch">
+        <label class="flex items-center space-x-3">
+            <span class="text-gray-700">Terra</span>
+            <input id="themeSwitch" type="checkbox" class="toggle toggle-primary">
+            <span class="text-gray-700">Acqua</span>
+        </label>
+    </div>
+
+
+    <script>
+        
+
+        const canvas = document.getElementById('domandaCanvas');
+        const ctx = canvas.getContext('2d');
+        window.addEventListener('resize', resizeCanvas);
+        const themeSwitch = document.getElementById('themeSwitch');
+
+        // Immagini di sfondo per i due temi
+        const themes = {
+            terra: 'immagini/erba_alta test.png',
+            acqua: 'immagini/acqua_test.png'
+        };
+
+        // Funzione per aggiornare il tema
+        function aggiornaTema(tema) {
+            localStorage.setItem('currentTheme', tema); // Salva il tema nel localStorage
+            canvas.style.backgroundImage = `url('${themes[tema]}')`;
+            currentTheme = tema;
+            generaPuntiDiDomanda();
+            disegna();
+        }
+
+
+        // Imposta il tema iniziale
+        let currentTheme = localStorage.getItem('currentTheme') || 'terra'; // Ripristina il tema dal localStorage, di default 'terra'
+        canvas.style.backgroundImage = `url('${themes[currentTheme]}')`;
+
+        // Aggiorna lo stato dello switch in base al tema salvato
+        themeSwitch.checked = currentTheme === 'acqua';
+
+        // Aggiungi una variabile per la dimensione dell'immagine di Scooby
+        let dimensioneScooby = 60; // Imposta la dimensione iniziale per Scooby
+
+        themeSwitch.addEventListener('change', () => {
+            const nuovoTema = themeSwitch.checked ? 'acqua' : 'terra';
+
+            if (nuovoTema === 'acqua') {
+                puntinoBluImg.src = 'immagini/scoobyacqua.png';
+                dimensioneScooby = 80; // Aumenta la dimensione per il tema acqua
+            } else {
+                puntinoBluImg.src = 'immagini/scooby-doo.png';
+                dimensioneScooby = 60; // Imposta la dimensione originale per il tema terra
+            }
+
+            aggiornaTema(nuovoTema);
+        });
+
+
+
+        let puntiDiDomanda = [];
+        const numPuntiDiDomanda = 7;
+        const puntinoBlu = { x: 0, y: 0, size: 60 };
+        let puntoInterrogativoVicino = null;
+        let lampeggiamentoIntervallo = null; // Timer per il lampeggiamento
+        let timerLampeggiamento = null; // Timer per il check di 5 secondi
+        const puntinoBluImg = new Image();
+        if (currentTheme === 'acqua') {
+            puntinoBluImg.src = 'immagini/scoobyacqua.png';
+            dimensioneScooby = 80; // Aumenta la dimensione per il tema acqua
+        } else {
+            puntinoBluImg.src = 'immagini/scooby-doo.png';
+            dimensioneScooby = 60; // Imposta la dimensione originale per il tema terra
+        }
+        const indicatoreImg = new Image();
+        indicatoreImg.src = 'immagini/indicatore.png'; // Nuova immagine per il punto interrogativo
+        puntinoBluImg.onload = () => {
+            resizeCanvas();
+        };
+        indicatoreImg.onload = () => {
+            resizeCanvas();
+        };
+
+        // Variabile per definire il margine in percentuale
+        const marginePercentuale = 0.05; // 10% del margine dal bordo
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            puntinoBlu.x = canvas.width / 2;
+            puntinoBlu.y = canvas.height / 2;
+            generaPuntiDiDomanda();
+            disegna();
+        }
+
+        function generaPuntiDiDomanda() {
+            puntiDiDomanda = [];
+            const distanzaMinima = 100;
+
+            // Calcola il margine in pixel in base alla percentuale e alla dimensione del canvas
+            const margineX = canvas.width * marginePercentuale;
+            const margineY = canvas.height * marginePercentuale;
+
+            while (puntiDiDomanda.length < numPuntiDiDomanda) {
+                // Genera le coordinate considerando il margine
+                const x = Math.random() * (canvas.width - 2 * margineX) + margineX;
+                const y = Math.random() * (canvas.height - 2 * margineY) + margineY;
+
+                const distanzaValida = puntiDiDomanda.every(punto => {
+                    const distanza = Math.hypot(x - punto.x, y - punto.y);
+                    return distanza >= distanzaMinima;
+                });
+
+                if (distanzaValida) {
+                    puntiDiDomanda.push({ x, y });
+                }
+            }
+        }
+
+        function disegna() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Disegna gli indicatori
+            for (const punto of puntiDiDomanda) {
+                const scalingFactor = punto.lampeggiando ? 1.3 : 1; // Fattore di scala per gli indicatori
+
+                ctx.save(); // Salva il contesto attuale
+                ctx.translate(punto.x, punto.y); // Trasla l'origine
+                ctx.scale(scalingFactor, scalingFactor); // Applica la scala
+
+                // Disegna l'immagine dell'indicatore
+                if (indicatoreImg.complete) {
+                    const imgWidth = puntinoBlu.size;
+                    const imgHeight = (indicatoreImg.height / indicatoreImg.width) * imgWidth;
+                    ctx.drawImage(indicatoreImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+                }
+
+                ctx.restore(); // Ripristina il contesto originale
+            }
+
+            // Disegna l'immagine di Scooby
+            if (puntinoBluImg.complete) {
+                const imgWidth = dimensioneScooby; // Usa la dimensione specifica per Scooby
+                const imgHeight = (puntinoBluImg.height / puntinoBluImg.width) * imgWidth;
+                ctx.drawImage(puntinoBluImg, puntinoBlu.x - imgWidth / 2, puntinoBlu.y - imgHeight / 2, imgWidth, imgHeight);
+            }
+        }
+
+        // Funzione per muovere il puntino blu sulla canvas in base ai tasti premuti (W, A, S, D o frecce direzionali)
+        function muoviPuntino(tasto) {
+            const step = 5;  // Distanza che il puntino si sposta ogni volta che un tasto viene premuto
+            const imgWidth = puntinoBlu.size;  // Larghezza dell'immagine del puntino blu
+            const imgHeight = (puntinoBluImg.height / puntinoBluImg.width) * imgWidth;  // Altezza dell'immagine in proporzione alla larghezza
+
+            // Spostamento in alto (W o freccia su)
+            if (tasto === 'w' || tasto === 'ArrowUp') {
+                if (puntinoBlu.y - step > 30) {  // Limita lo spostamento al margine superiore
+                    puntinoBlu.y -= step;  // Muove il puntino verso l'alto
+                }
+            }
+            // Spostamento in basso (S o freccia giù)
+            else if (tasto === 's' || tasto === 'ArrowDown') {
+                if (puntinoBlu.y + imgHeight + step < canvas.height + 25) {  // Limita lo spostamento al margine inferiore
+                    puntinoBlu.y += step;  // Muove il puntino verso il basso
+                }
+            }
+            // Spostamento a sinistra (A o freccia sinistra)
+            else if (tasto === 'a' || tasto === 'ArrowLeft') {
+                if (puntinoBlu.x - step > 30) {  // Limita lo spostamento al margine sinistro
+                    puntinoBlu.x -= step;  // Muove il puntino a sinistra
+                }
+            }
+            // Spostamento a destra (D o freccia destra)
+            else if (tasto === 'd' || tasto === 'ArrowRight') {
+                if (puntinoBlu.x + imgWidth + step < canvas.width + 25) {  // Limita lo spostamento al margine destro
+                    puntinoBlu.x += step;  // Muove il puntino verso destra
+                }
+            }
+
+            // Verifica se il puntino blu ha toccato uno dei punti di domanda
+            controllaCollisione();
+
+            // Rende visibile il puntino blu dopo ogni movimento
+            disegna();
+        }
+
+        // Funzione che controlla se il puntino blu è vicino a uno dei punti di domanda
+        function controllaCollisione() {
+            puntoInterrogativoVicino = null;  // Reset del punto interrogativo vicino
+            let collisione = false;  // Variabile che indica se c'è una collisione
+
+            // Scorre attraverso tutti i punti di domanda
+            puntiDiDomanda.forEach(punto => {
+                const distanza = Math.hypot(puntinoBlu.x - punto.x, puntinoBlu.y - punto.y);  // Calcola la distanza tra il puntino blu e il punto di domanda
+                if (distanza < puntinoBlu.size + 10) {  // Se la distanza è inferiore alla somma della dimensione del puntino blu e un offset
+                    puntoInterrogativoVicino = punto;  // Imposta il punto interrogativo vicino
+                    iniziaLampeggiamento(punto);  // Avvia il lampeggiamento del punto interrogativo
+                    collisione = true;  // Indica che c'è una collisione
+                }
+            });
+
+            // Se non ci sono collisioni, ferma il lampeggiamento
+            if (!collisione) {
+                fermaLampeggiamento();
+            }
+        }
+
+        // Funzione che avvia l'animazione di lampeggiamento per un punto di domanda
+        function iniziaLampeggiamento(punto) {
+            if (lampeggiamentoIntervallo) return;  // Se c'è già un intervallo di lampeggiamento, non fa nulla
+
+            punto.lampeggiando = true;  // Imposta il flag del lampeggiamento
+            punto.scale = 1;  // Imposta la scala iniziale
+            let intervallo = 200;  // Intervallo iniziale per il lampeggiamento (in millisecondi)
+
+            // Crea un intervallo per far lampeggiare il punto
+            lampeggiamentoIntervallo = setInterval(() => {
+                punto.lampeggiando = !punto.lampeggiando;  // Alterna lo stato di lampeggiamento
+                punto.scale = punto.lampeggiando ? 1.3 : 1;  // Cambia la scala per ingrandire il punto quando lampeggia
+                disegna();  // Ridisegna il canvas per riflettere il cambiamento
+
+                // Riduce l'intervallo per aumentare la velocità del lampeggiamento
+                if (intervallo > 10) {
+                    intervallo *= 0.8;  // Riduce l'intervallo del 20%
+                    clearInterval(lampeggiamentoIntervallo);  // Ferma l'intervallo precedente
+                    lampeggiamentoIntervallo = setInterval(() => {
+                        punto.lampeggiando = !punto.lampeggiando;
+                        punto.scale = punto.lampeggiando ? 1.3 : 1;
+                        disegna();
+                    }, intervallo);  // Avvia un nuovo intervallo con la velocità ridotta
+                }
+            }, intervallo);
+
+            // Dopo 2 secondi, se il puntino blu è vicino a un punto interrogativo, reindirizza alla pagina Battaglia.html
+            if (timerLampeggiamento) {
+                clearTimeout(timerLampeggiamento);  // Pulisce il timer precedente se esiste
+            }
+
+            timerLampeggiamento = setTimeout(() => {
+                if (puntoInterrogativoVicino) {
+                    window.location.href = 'Battaglia.html';  // Reindirizza alla pagina Battaglia.html
+                }
+            }, 2000);  // Timeout di 2 secondi
+        }
+
+        // Funzione per fermare il lampeggiamento e reset dei punti di domanda
+        function fermaLampeggiamento() {
+            // Se esiste un intervallo di lampeggiamento, lo ferma
+            if (lampeggiamentoIntervallo) {
+                clearInterval(lampeggiamentoIntervallo);
+                lampeggiamentoIntervallo = null;
+            }
+
+            // Se esiste un timer di lampeggiamento, lo ferma
+            if (timerLampeggiamento) {
+                clearTimeout(timerLampeggiamento);
+                timerLampeggiamento = null;
+            }
+
+            // Ripristina lo stato di tutti i punti di domanda
+            puntiDiDomanda.forEach(punto => {
+                punto.lampeggiando = false;
+                punto.scale = 1;
+            });
+
+            // Ridisegna il canvas per rimuovere gli effetti di lampeggiamento
+            disegna();
+        }
+
+        // Aggiunge un ascoltatore per il tasto 'keydown' che esegue la funzione muoviPuntino quando vengono premuti i tasti di movimento
+        window.addEventListener('keydown', (event) => {
+            if (['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                muoviPuntino(event.key);  // Muove il puntino in base al tasto premuto
+            }
+        });
+
+        // Aggiunge un ascoltatore per l'evento di ridimensionamento della finestra per adattare il canvas alle nuove dimensioni
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();  // Chiamata iniziale per impostare le dimensioni del canvas
+        const image = new Image();
+image.src = 'immagini/acqua_test.png'; // Il percorso della tua immagine
+
+let offset = 0; // Offset per animare l'acqua
+
+// Carica l'immagine
+image.onload = () => {
+    aggiornaCanvas();
+};
+
+function aggiornaCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Disegna l'effetto acqua solo se il tema è "acqua"
+    if (currentTheme === 'acqua') {
+        applicaEffettoAcqua();
+    }
+
+    // Disegna i punti interrogativi sopra l'effetto acqua
+    for (const punto of puntiDiDomanda) {
+        const scalingFactor = punto.lampeggiando ? 1.3 : 1; // Effetto di scala per il lampeggio
+
+        ctx.save(); // Salva lo stato del contesto
+        ctx.translate(punto.x, punto.y);
+        ctx.scale(scalingFactor, scalingFactor);
+
+        if (indicatoreImg.complete) {
+            const imgWidth = puntinoBlu.size;
+            const imgHeight = (indicatoreImg.height / indicatoreImg.width) * imgWidth;
+            ctx.drawImage(indicatoreImg, -imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
+        }
+
+        ctx.restore(); // Ripristina lo stato del contesto
+    }
+
+    // Disegna l'immagine del puntino blu sopra tutto
+    if (puntinoBluImg.complete) {
+        const imgWidth = dimensioneScooby;
+        const imgHeight = (puntinoBluImg.height / puntinoBluImg.width) * imgWidth;
+        ctx.drawImage(puntinoBluImg, puntinoBlu.x - imgWidth / 2, puntinoBlu.y - imgHeight / 2, imgWidth, imgHeight);
+    }
+
+    // Aggiorna l'offset per il movimento dell'acqua
+    offset += 0.05;
+
+    // Usa requestAnimationFrame per continuare l'animazione
+    requestAnimationFrame(aggiornaCanvas);
+}
+
+
+function applicaEffettoAcqua() {
+    const waveAmplitude = 20; // Ampiezza delle onde
+    const waveFrequency = 0.04; // Frequenza delle onde
+
+    // Loop per ogni linea dell'immagine
+    for (let y = 0; y < canvas.height; y += 1) {
+        const waveOffset = Math.sin((y + offset) * waveFrequency) * waveAmplitude;
+
+        ctx.drawImage(
+            image, // Immagine di base
+            0, y, canvas.width, 1, // Area dell'immagine da prelevare
+            waveOffset, y, canvas.width, 1 // Area dove disegnarla con offset
+        );
+    }
+}
+
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon App</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@1.19.0/dist/full.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        @font-face {
+            font-family: 'PokemonFont';
+            src: url('Pokemon Solid.ttf') format('truetype');
+        }
+
+        body {
+            font-family: 'PokemonFont', cursive;
+            background: linear-gradient(135deg, #ffdde1, #f5e7e6, #c2e9fb);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            position: relative;
+        }
+
+        .outlined-text {
+            color: #ffbf00;
+            text-shadow:
+                -2px -2px 0 #3B4CCA,
+                2px -2px 0 #3B4CCA,
+                -2px 2px 0 #3B4CCA,
+                2px 2px 0 #3B4CCA;
+        }
+
+        /* Pokedex image as background */
+        .pokedex-container {
+            width: 400px;
+            height: 500px;
+            background-image: url('immagini/pokedex.png');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            /* Spazio tra il titolo e i bottoni */
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* Pokemon logo */
+        .pokemon-logo {
+            border: 3px solid #3B4CCA;
+            border-radius: 50%;
+            padding: 5px;
+            margin-right: 10px;
+            /* Distanza tra logo e titolo */
+            height: 50px;
+            width: 50px;
+            margin-top: 80px;
+        }
+
+        /* Flexbox per logo e titolo */
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            /* Ridurre lo spazio tra titolo e bottoni */
+        }
+
+        /* Titolo */
+        h1 {
+            font-size: 2.2rem;
+            margin: 0;
+            margin-top: 80px;
+            margin-right: 50px;
+        }
+
+        /* Pulsanti - dimensione più piccola */
+        .btn {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+            font-size: 1.25rem;
+            padding: 12px 24px;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, #ff6a88, #ff99ac);
+            box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Contenitore dei pulsanti dentro il Pokedex */
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            text-align: center;
+            position: absolute;
+            top: 170px;
+            /* Posiziona i bottoni più in alto */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="pokedex-container">
+        <!-- Flexbox per Logo e Titolo in alto -->
+        <div class="header-container">
+            <img src="immagini/pokemon-logo.png" alt="Pokemon Logo" class="pokemon-logo">
+            <h1 class="outlined-text">Pokédex</h1>
+        </div>
+
+        <!-- Contenitore dei bottoni all'interno del Pokedex -->
+        <div class="button-container">
+            <!--Bottone che ti permette di andare sulla pagina GiocaPokemon.html-->
+            <a href="GiocaPokemon.html">
+                <button
+                    class="btn rounded-lg w-64 mx-auto outlined-text py-4 px-6 transition-transform duration-200 hover:scale-110">GIOCA</button>
+            </a>
+            <!--Bottone che ti permette di andare sulla pagina PersonalList.html-->
+            <a href="PersonalList.html">
+                <button
+                    class="btn rounded-lg w-64 mx-auto outlined-text py-4 px-6 transition-transform duration-200 hover:scale-110">LISTA
+                    PERSONALE</button>
+            </a>
+            <!--Bottone che ti permette di andare sulla pagina PokemonTotali.html-->
+            <a href="PokemonTotali.html">
+                <button
+                    class="btn rounded-lg w-64 mx-auto outlined-text py-4 px-6 transition-transform duration-200 hover:scale-110">POKEMON
+                    TOTALI</button>
+            </a>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon List</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@1.19.0/dist/full.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        /* Stili di base */
+        @font-face {
+            font-family: 'PokemonFont';
+            src: url('Pokemon Solid.ttf') format('truetype');
+        }
+
+        body {
+            font-family: 'PokemonFont', cursive;
+            background: linear-gradient(135deg, #ffdde1, #f5e7e6, #c2e9fb);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+            flex-direction: column;
+        }
+
+        .outlined-text {
+            color: #ffbf00;
+            text-shadow:
+                -2px -2px 0 #3B4CCA,
+                2px -2px 0 #3B4CCA,
+                -2px 2px 0 #3B4CCA,
+                2px 2px 0 #3B4CCA;
+        }
+
+        .pokemon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .pokemon-card {
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            padding: 10px;
+            transition: transform 0.2s;
+        }
+
+        .pokemon-card:hover {
+            transform: scale(1.05);
+        }
+
+        .popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .popup-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 400px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-close {
+            background-color: #3B4CCA;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <button id="backButton"
+        class="btn btn-circle btn-outline text-white bg-blue-500 hover:bg-blue-700 absolute top-4 left-4"
+        onclick="window.location.href='index.html'">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-6 h-6">
+            <!-- Icona della casetta -->
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 12l9-9 9 9M4 10v10h16V10M12 22V12" />
+        </svg>
+    </button>
+    <a href="index.html">
+        <h1 class="text-4xl outlined-text mb-8">Pokémon List</h1>
+    </a>
+    <div id="pokemonContainer" class="pokemon-grid"></div>
+
+    <!-- Popup per dettagli Pokémon -->
+    <div id="detailsPopup" class="popup">
+        <div class="popup-content">
+            <h2 id="pokemonName" class="text-3xl font-bold mb-4 outlined-text"></h2>
+            <img id="pokemonImage" src="" alt="Pokémon" class="mb-4">
+            <p id="pokemonType" class="mb-2"></p>
+            <p id="pokemonAbilities" class="mb-2"></p>
+            <p id="pokemonStats" class="mb-2"></p>
+            <p id="pokemonEvolution" class="mb-4"></p>
+            <button class="btn-close" onclick="closePopup()">Chiudi</button>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://pokeapi.co/api/v2/pokemon?limit=1302';
+
+        // Riferimenti agli elementi della pagina
+        const pokemonContainer = document.getElementById('pokemonContainer');
+        const detailsPopup = document.getElementById('detailsPopup');
+        const pokemonName = document.getElementById('pokemonName');
+        const pokemonImage = document.getElementById('pokemonImage');
+        const pokemonType = document.getElementById('pokemonType');
+        const pokemonAbilities = document.getElementById('pokemonAbilities');
+        const pokemonStats = document.getElementById('pokemonStats');
+        const pokemonEvolution = document.getElementById('pokemonEvolution');
+
+        // Funzione per recuperare la lista dei Pokémon
+        function fetchPokemon() {
+            fetch(API_URL)
+                .then(response => response.json())
+                .then(data => {
+                    // Per ogni Pokémon nella lista, carica i dettagli
+                    data.results.forEach(pokemon => fetchPokemonDetails(pokemon.url));
+                })
+                .catch(error => console.error("Errore nel recupero dei Pokémon:", error));
+        }
+
+        // Funzione per recuperare i dettagli di un singolo Pokémon
+        function fetchPokemonDetails(url) {
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    // Crea la card per ogni Pokémon
+                    createPokemonCard(data);
+                })
+                .catch(error => console.error("Errore nel recupero dei dettagli Pokémon:", error));
+        }
+
+        // Funzione per creare la card di ogni Pokémon e visualizzarla nella griglia
+        function createPokemonCard(pokemon) {
+            const pokemonCard = document.createElement('div');
+            pokemonCard.classList.add('pokemon-card', 'p-4');
+
+            const img = document.createElement('img');
+            img.src = pokemon.sprites.front_default;
+            img.alt = pokemon.name;
+            img.classList.add('w-20', 'h-20', 'mx-auto', 'mb-2'); // Aggiunta immagine del Pokémon
+
+            const name = document.createElement('p');
+            name.textContent = pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1); // Primo carattere maiuscolo
+            name.classList.add('text-xl', 'font-bold', 'outlined-text');
+
+            // Aggiungi la card del Pokémon alla griglia
+            pokemonCard.appendChild(img);
+            pokemonCard.appendChild(name);
+            pokemonCard.onclick = () => showDetails(pokemon); // Mostra i dettagli del Pokémon al click
+
+            pokemonContainer.appendChild(pokemonCard);
+        }
+
+        // Funzione per visualizzare i dettagli di un Pokémon nel popup
+        function showDetails(pokemon) {
+            pokemonName.textContent = pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1);
+
+            // Prende lo sprite dinamico se esiste se no usa quello statico.
+            const animatedSpriteUrl = pokemon.sprites.versions["generation-v"]["black-white"].animated.front_default;
+            const staticSpriteUrl = pokemon.sprites.front_default;
+            pokemonImage.src = animatedSpriteUrl ? animatedSpriteUrl : staticSpriteUrl;
+
+            // Visualizza il tipo, l'ID  e le statistiche del Pokémon
+            pokemonType.textContent = `Tipo: ${pokemon.types.map(type => type.type.name).join(', ')} ; id: ${pokemon.id}`;
+            pokemonAbilities.textContent = `Abilità: ${pokemon.abilities.map(ability => ability.ability.name).join(', ')}`;
+            pokemonStats.textContent = 'Stats: ' + pokemon.stats.map(stat => `${stat.stat.name}: ${stat.base_stat}`).join(', ');
+
+            // Recupera i dati di evoluzione del Pokémon
+            fetch(`https://pokeapi.co/api/v2/pokemon-species/${pokemon.id}`)
+                .then(response => response.json())
+                .then(speciesData => {
+                    if (speciesData.evolves_from_species) {
+                        pokemonEvolution.textContent = `Si evolve da: ${speciesData.evolves_from_species.name}`;
+                    } else {
+                        pokemonEvolution.textContent = 'Questa è la prima evoluzione.';
+                    }
+                })
+                .catch(error => console.error("Errore nel recupero dei dati di evoluzione:", error));
+            detailsPopup.style.display = 'flex'; // Mostra il popup
+        }
+
+        // Funzione per chiudere il popup
+        function closePopup() {
+            detailsPopup.style.display = 'none';
+        }
+
+        // Inizializza il caricamento dei Pokémon al caricamento della pagina
+        document.addEventListener("DOMContentLoaded", fetchPokemon);
+    </script>
+</body>
+
+</html>
